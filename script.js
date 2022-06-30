@@ -105,7 +105,8 @@ function makeBook(bookObject) {
                 title: 'Hapus Buku',
                 message: 'Apakah Anda yakin akan menghapus buku tersebut?',
                 onok: () => {
-                    removeBookFromCompleted(event.target.parentElement.parentElement.id.split("-")[1]);
+                    const bookId = parseInt(event.target.parentElement.parentElement.id.split("-")[1]);
+                    removeBookFromCompleted(bookId);
                 }
             })
         });
@@ -129,7 +130,8 @@ function makeBook(bookObject) {
                 title: 'Hapus Buku',
                 message: 'Apakah Anda yakin akan menghapus buku tersebut?',
                 onok: () => {                    
-                    removeBookFromUncompleted(event.target.parentElement.parentElement.id.split("-")[1]);                    
+                    const bookId = parseInt(event.target.parentElement.parentElement.id.split("-")[1]);                    
+                    removeBookFromUncompleted(bookId);
                 }
             })
         });
