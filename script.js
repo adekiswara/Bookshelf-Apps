@@ -157,9 +157,7 @@ function moveBookFromUncompleted (bookId) {
 // Menghapus data buku dari rak belum selesai dibaca
 function removeBookFromUncompleted (bookId) {
     const bookTarget = findBook(bookId);
-
-    console.log(bookTarget);
-    console.log(bookId);
+        
     if (bookTarget == null) return;
 
     books.splice(bookTarget, 1);
