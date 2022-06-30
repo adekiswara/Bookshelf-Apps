@@ -1,13 +1,25 @@
 const books = [];
 const RENDER_EVENT = 'render-book';
+const SAVED_EVENT = 'saved-book';
+const STORAGE_KEY = 'BOOKSHELF_APPS';
 
 document.addEventListener("DOMContentLoaded", function() {
     const submitForm = document.getElementById('inputBook');
+    const searchForm = document.getElementById('searchBook');
 
     submitForm.addEventListener('submit', function(event) {
         event.preventDefault();
         addBook();
-    })
+    });
+
+    searchForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        searchBook();
+    });
+
+    if (isStorageExist) {
+        loadDataFromStorage();
+    };
 });
 
 function addBook() {
@@ -21,6 +33,7 @@ function addBook() {
     books.push(bookObject);
 
     document.dispatchEvent(new Event(RENDER_EVENT));
+    saveData();
 };
 
 function generateId() {
@@ -60,24 +73,24 @@ function makeBook(bookObject) {
     textTitle.innerHTML = bookObject.title;
 
     const textAuthor = document.createElement('p');
-    textAuthor.innerHTML = bookObject.author;
+    textAuthor.innerHTML = `Penulis: ${bookObject.author}`;
 
     const textYear = document.createElement('p');
-    textYear.innerHTML = bookObject.year;
+    textYear.innerHTML = `Tahun: ${bookObject.year}`;
 
-    const textContainer = document.createElement('article');
-    textContainer.classList.add('book_item');
+    const textContainer = document.createElement('div');
+    textContainer.classList.add('action');
     textContainer.append(textTitle, textAuthor, textYear);
 
-    const container = document.createElement('div');
-    container.classList.add('action');
+    const container = document.createElement('article');
+    container.classList.add('book_item');
     container.append(textContainer);
     container.setAttribute('id', `book-${bookObject.id}`);
 
     if (bookObject.isCompleted) {
         const uncheckButton = document.createElement('button');
         uncheckButton.classList.add('green');
-        uncheckButton.innerText = 'Selesai dibaca';
+        uncheckButton.innerText = 'Belum selesai dibaca';
 
         uncheckButton.addEventListener('click', function () {
             moveBookFromCompleted(bookObject.id);
@@ -87,15 +100,21 @@ function makeBook(bookObject) {
         deleteButton.classList.add('red');
         deleteButton.innerText = 'Hapus buku';
 
-        deleteButton.addEventListener('click', function () {
-            removeBookFromCompleted(bookObject.id);
+        deleteButton.addEventListener('click', function (event) {
+            Confirm.open({
+                title: 'Hapus Buku',
+                message: 'Apakah Anda yakin akan menghapus buku tersebut?',
+                onok: () => {
+                    removeBookFromCompleted(event.target.parentElement.parentElement.id.split("-")[1]);
+                }
+            })
         });
 
-        container.append(uncheckButton, deleteButton);
+        textContainer.append(uncheckButton, deleteButton);
     } else {
         const checkButton = document.createElement('button');
         checkButton.classList.add('green');
-        checkButton.innerText = 'Belum selesai dibaca';
+        checkButton.innerText = 'Selesai dibaca';
 
         checkButton.addEventListener('click', function () {
             moveBookFromUncompleted(bookObject.id)
@@ -105,11 +124,17 @@ function makeBook(bookObject) {
         deleteButton.classList.add('red');
         deleteButton.innerText = 'Hapus buku';
 
-        deleteButton.addEventListener('click', function () {
-            removeBookFromUncompleted(bookObject.id);
+        deleteButton.addEventListener('click', function (event) {
+            Confirm.open({
+                title: 'Hapus Buku',
+                message: 'Apakah Anda yakin akan menghapus buku tersebut?',
+                onok: () => {                    
+                    removeBookFromUncompleted(event.target.parentElement.parentElement.id.split("-")[1]);                    
+                }
+            })
         });
 
-        container.append(checkButton, deleteButton);
+        textContainer.append(checkButton, deleteButton);
     };
     
     return container;
@@ -124,16 +149,20 @@ function moveBookFromUncompleted (bookId) {
 
     bookTarget.isCompleted = true;
     document.dispatchEvent(new Event(RENDER_EVENT));
+    saveData();
 };
 
 // Menghapus data buku dari rak belum selesai dibaca
 function removeBookFromUncompleted (bookId) {
     const bookTarget = findBook(bookId);
 
+    console.log(bookTarget);
+    console.log(bookId);
     if (bookTarget == null) return;
 
     books.splice(bookTarget, 1);
     document.dispatchEvent(new Event(RENDER_EVENT));
+    saveData();
 };
 
 function findBook (bookId) {
@@ -148,12 +177,13 @@ function findBook (bookId) {
 
 // Memindahkan data buku dari rak sudah selesai dibaca ke belum selesai dibaca
 function moveBookFromCompleted (bookId) {
-    const bookTarget = findBookIndex(bookId);
+    const bookTarget = findBook(bookId);
 
-    if (bookTarget === -1) return;
+    if (bookTarget == null) return;
 
     bookTarget.isCompleted = false;
     document.dispatchEvent(new Event(RENDER_EVENT));
+    saveData();
 };
 
 // menghapus data buku dari rak sudah selesai dibaca
@@ -164,6 +194,7 @@ function removeBookFromCompleted (bookId) {
     
     books.splice(bookTarget, 1);
     document.dispatchEvent(new Event(RENDER_EVENT));
+    saveData();
 };
 
 function findBookIndex (bookId) {
@@ -174,4 +205,122 @@ function findBookIndex (bookId) {
     }
 
     return -1;
-}
+};
+
+function saveData() {
+    if(isStorageExist()) {
+        const parsed = JSON.stringify(books);
+        localStorage.setItem(STORAGE_KEY, parsed);
+        document.dispatchEvent(new Event(SAVED_EVENT));
+    };
+};
+
+function isStorageExist() /* boolean */ {
+    if (typeof (storage) === undefined) {
+        alert('Browser kamu tidak mendukung local storage');
+        return false;
+    }
+    return true;
+};
+
+document.addEventListener(SAVED_EVENT, function () {
+    console.log(localStorage.getItem(STORAGE_KEY));
+});
+
+function loadDataFromStorage() {
+    const serializeData = localStorage.getItem(STORAGE_KEY);
+    let data = JSON.parse(serializeData);
+
+    if (data !== null) {
+        for (const book of data) {
+            books.push(book);
+        };
+    };
+
+    document.dispatchEvent(new Event(RENDER_EVENT));
+};
+
+function searchBook() {
+    const bookTitle = document.getElementById("searchBookTitle").value;
+
+    const filter = bookTitle.toUpperCase();
+    const container = document.querySelectorAll(".book_list > .book_item");
+
+    for(let i = 0; i < container.length; i++) {
+        let title = container[i].querySelector("h2");
+        let textTitle = title.innerText;
+
+        if(textTitle.toUpperCase().indexOf(filter) > -1) {
+            container[i].style.display = "";
+        } else {
+            container[i].style.display = "none";
+        }
+    }
+};
+
+const Confirm = {
+    open (options) {
+        options = Object.assign({}, {
+            title: '',
+            message: '',
+            okText: 'Ya',
+            cancelText: 'Tidak',
+            onok: function () {},
+            oncancel: function () {}
+        }, options);
+        
+        const html = `
+            <div class="confirm">
+                <div class="confirm__window">
+                    <div class="confirm__titlebar">
+                        <span class="confirm__title">${options.title}</span>
+                        <button class="confirm__close">&times;</button>
+                    </div>
+                    <div class="confirm__content">${options.message}</div>
+                    <div class="confirm__buttons">
+                        <button class="confirm__button confirm__button--ok confirm__button--fill">${options.okText}</button>
+                        <button class="confirm__button confirm__button--cancel">${options.cancelText}</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const template = document.createElement('template');
+        template.innerHTML = html;
+
+        // Elements
+        const confirmEl = template.content.querySelector('.confirm');
+        const btnClose = template.content.querySelector('.confirm__close');
+        const btnOk = template.content.querySelector('.confirm__button--ok');
+        const btnCancel = template.content.querySelector('.confirm__button--cancel');
+
+        confirmEl.addEventListener('click', e => {
+            if (e.target === confirmEl) {
+                options.oncancel();
+                this._close(confirmEl);
+            }
+        });
+
+        btnOk.addEventListener('click', () => {
+            options.onok();
+            this._close(confirmEl);
+        });
+
+        [btnCancel, btnClose].forEach(el => {
+            el.addEventListener('click', () => {
+                options.oncancel();
+                this._close(confirmEl);
+            });
+        });
+
+        document.body.appendChild(template.content);
+    },
+
+    _close (confirmEl) {
+        confirmEl.classList.add('confirm--close');
+
+        confirmEl.addEventListener('animationend', () => {
+            document.body.removeChild(confirmEl);
+        });
+    }
+};
